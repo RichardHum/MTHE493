@@ -12,8 +12,8 @@ int sampleProbability(double beta, int rows, int cols, int** img, int** origImg,
 int metropolis(double beta, int rows, int cols, int** img, int** origImg, double* initEnergy, int x, int y);
 int testFcn(int rows, int cols, int** imgIn, int** imgOut);
 
-double lambda = 10;
-double sigma = 1;
+double lambda = 1000;
+double sigma = 1000;
 int** imgCopy1;
 
 
@@ -118,7 +118,7 @@ int main(int argc, char* argv[])
     int mod;
 
     //Main loop
-    for (k=1;k<=500;k+=1)
+    for (k=1;k<=10000;k+=1)
     {
         beta = 3 / log(k+1);
 		//beta = (rows * cols * delta)/log(k+1);
@@ -133,7 +133,7 @@ int main(int argc, char* argv[])
             }
         }
 
-        mod = 5;
+        mod = 100;
         if (k%mod == 0)
         {
             strcpy(oName,basename);
