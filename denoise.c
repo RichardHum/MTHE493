@@ -149,9 +149,6 @@ int main(int argc, char* argv[])
             }
             fclose(file);
         }
-        
-
-		
     }
 
     for (i=0;i<rows;i++)
