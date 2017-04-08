@@ -112,30 +112,35 @@ int main(int argc, char* argv[])
     double curNbhdEnergy = 0;
     l = 0;
 
-    for (i=0; i<rows; i++)
-    {
-        for (j=0; j<cols; j++)
-        {
-            initNbhdEnergy = nbhdEnergy(rows,cols,img,origImg,i,j);
-            for (k=0;k<256;k++)
-            {
-                imgCopy[i][j] = k;
-                curNbhdEnergy = nbhdEnergy(rows,cols,imgCopy,origImg,i,j);
-                current = initEnergy - initNbhdEnergy + curNbhdEnergy;
-                locOsc = current > locOsc ? current : locOsc;
-            }
-            imgCopy[i][j] = img[i][j];
-            osc = locOsc > osc ? locOsc : osc;
-        }
-    }
-
-    delta = osc;
     //printf("Oscillation: %f\n",delta);
 
     double beta;
     double curEnergy;
 
     int mod;
+
+    float** lambdas;
+    lambdas = malloc(noFilts *sizeof(*lambdas));
+    for(i=0;i<noFilts;i++)
+        lambdas[i] = malloc(8*sizeof(*lambdas[i]));
+
+    float** lambdaTemp[][] = 
+        {{0.0440000000000000,0.438800000000000,-0.372400000000000,0.398400000000000,-0.422000000000000,0.000400000000000000}
+        {0,-0.00600000000000000,0.00520000000000000,-0.0108000000000000,0.00520000000000000,0.00240000000000000}
+        {0,0.0212000000000000,0.00360000000000000,0.0168000000000000,0.00200000000000000,0.0176000000000000}
+        {0,-0.00480000000000000,0.0120000000000000,-0.00320000000000000,0.0172000000000000,0.00720000000000000}
+        {0,-0.000800000000000000,0.00800000000000000,-0.000400000000000000,-0.00520000000000000,0.00800000000000000}
+        {0,0,0.00360000000000000,-0.00280000000000000,0.0100000000000000,0.0108000000000000}
+        {0,0,0.469600000000000,0.00200000000000000,0.00640000000000000,0.0100000000000000}
+        {-0.0439999999999999,-0.448400000000000,-0.129600000000000,-0.400000000000000,0.386400000000000,-0.0564000000000000}};
+
+    for (i=0;i<noFilts;i++)
+    {
+        for (j=0;j<8;j++)
+        {
+            lambdas[i][j] = lambdaTemp[i][j];
+        }
+    }
 
     //Main loop
     for (k=1;k<=10000;k+=1)

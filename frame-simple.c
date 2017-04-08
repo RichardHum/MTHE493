@@ -12,8 +12,6 @@ double energy(int noFilts, float* lambdas, int* histogram);
 void gaussian(double** filter, double sigma, int filtRows, int filtCols);
 void gabor(double** filter, double sigma, int theta, int filtRows, int filtCols);
 
-int** imgCopy1;
-
 int main(int argc, char* argv[])
 {
     if (argc != 4)
@@ -92,7 +90,7 @@ int main(int argc, char* argv[])
     {
         synthImg[i] = malloc(cols * sizeof(*synthImg[i]));
     }
-
+    int** imgCopy1;
     imgCopy1 = malloc(rows * sizeof(*imgCopy1));
     for (i=0;i<rows;i++)
     {
@@ -124,9 +122,9 @@ int main(int argc, char* argv[])
     }
 ////////////////////////////////////////////////////////////////////////////////
 
-    long epsilon = 1000;
-    double delta = 0.05;
-    long diff;
+    int min = 999999999;
+    double delta = 0.01;
+    int diff;
     double sum;
     double prob;
     float curEnergy;
@@ -136,21 +134,28 @@ int main(int argc, char* argv[])
     double probs[256];
     double energies[256];
     double randomNumber;
-    double initNbhdEnergy,curNbhdEnergy,current;
+    double current;
     double max;
     int randInt;
     int backup;
+    int count = 0;
+    int loopNo = 0;
 
+    int obsHistogram[256];
     int obsHistogram1[256];
     int obsHistogram2[256];
     int obsHistogram3[256];
-    int obsHistogram4[256];
+
+    int synthHistogram[256];
     int synthHistogram1[256];
     int synthHistogram2[256];
     int synthHistogram3[256];
-    int synthHistogram4[256];
-    
 
+    int CsynthHistogram[256];
+    int CsynthHistogram1[256];
+    int CsynthHistogram2[256];
+    int CsynthHistogram3[256];
+    
     // filter stuff
     int filtSize = 5;
     int filtRows = filtSize;
@@ -164,85 +169,94 @@ int main(int argc, char* argv[])
     filter2 = malloc(filtRows * sizeof(*filter2));
     for (i=0; i<filtCols; i++)
         filter2[i] = malloc(filtRows * sizeof(*filter2[i]));
-    gabor(filter2, 2, 30, filtRows, filtCols);
+    gabor(filter2, 2, 90, filtRows, filtCols);
     double** filter3;
     filter3 = malloc(filtRows * sizeof(*filter3));
     for (i=0; i<filtCols; i++)
         filter3[i] = malloc(filtRows * sizeof(*filter3[i]));
-    gabor(filter3, 2, 60, filtRows, filtCols);
-    double** filter4;
-    filter4 = malloc(filtRows * sizeof(*filter4));
-    for (i=0; i<filtCols; i++)
-        filter4[i] = malloc(filtRows * sizeof(*filter4[i]));
-    gabor(filter4, 2, 90, filtRows, filtCols);
+    gaussian(filter3, 2, filtRows, filtCols);
+
+    // lambda stuff
+    float** lambdas;
+    lambdas = malloc(noFilts *sizeof(*lambdas));
+    for(i=0;i<noFilts;i++)
+        lambdas[i] = malloc(256*sizeof(*lambdas[i]));
+
+    //convolve(rows,cols,filtRows,filtCols,img,filteredImg,filter2);
 
     // main code
+    computeHistogram(rows,cols,img,obsHistogram);
     convolve(rows,cols,filtRows,filtCols,img,filteredImg,filter1);  
     computeHistogram(rows,cols,filteredImg,obsHistogram1);
     convolve(rows,cols,filtRows,filtCols,img,filteredImg,filter2);  
     computeHistogram(rows,cols,filteredImg,obsHistogram2);
     convolve(rows,cols,filtRows,filtCols,img,filteredImg,filter3);  
     computeHistogram(rows,cols,filteredImg,obsHistogram3);
-    convolve(rows,cols,filtRows,filtCols,img,filteredImg,filter4);  
-    computeHistogram(rows,cols,filteredImg,obsHistogram4);
-
-    float lambdas[noFilts][256];
 
     for(i=0;i<noFilts;i++){
         for (j=0;j<256;j++)
             lambdas[i][j] = 0;
     }
     for (i=0;i<rows;i++){
-        for (j=0;j<cols;j++)
+        for (j=0;j<cols;j++){
             synthImg[i][j] = rand()%256;
+        }
     }
     for (i=0;i<rows;i++){
         for (j=0;j<cols;j++)
             imgCopy1[i][j] = synthImg[i][j];
     }
-    int count = 0;
-    int loopNo = 0;
-    do
-    {
-        loopNo++;
+    
+        computeHistogram(rows,cols,synthImg,synthHistogram);
         convolve(rows,cols,filtRows,filtCols,synthImg,filteredImg,filter1);
         computeHistogram(rows,cols,filteredImg,synthHistogram1);
         convolve(rows,cols,filtRows,filtCols,synthImg,filteredImg,filter2);
         computeHistogram(rows,cols,filteredImg,synthHistogram2);
         convolve(rows,cols,filtRows,filtCols,synthImg,filteredImg,filter3);
         computeHistogram(rows,cols,filteredImg,synthHistogram3);
-        convolve(rows,cols,filtRows,filtCols,synthImg,filteredImg,filter4);
-        computeHistogram(rows,cols,filteredImg,synthHistogram4);
 
-        for (i=0;i<256;i++)
-            lambdas[0][i] += delta * (synthHistogram1[i] - obsHistogram1[i]);
-        for (i=0;i<256;i++)
-            lambdas[1][i] += delta * (synthHistogram2[i] - obsHistogram2[i]);
-        for (i=0;i<256;i++)
-            lambdas[1][i] += delta * (synthHistogram3[i] - obsHistogram3[i]);
-        for (i=0;i<256;i++)
-            lambdas[1][i] += delta * (synthHistogram4[i] - obsHistogram4[i]);
+    do{
+        loopNo++;
+        for (i=0;i<256;i++){
+            lambdas[0][i] = lambdas[0][i] + delta * (synthHistogram[i] - obsHistogram[i]);
+            lambdas[1][i] = lambdas[1][i] + delta * (synthHistogram1[i] - obsHistogram1[i]);
+            lambdas[2][i] = lambdas[2][i] + delta * (synthHistogram2[i] - obsHistogram2[i]);
+            lambdas[3][i] = lambdas[3][i] + delta * (synthHistogram3[i] - obsHistogram3[i]);
+        }
+        curEnergy = energy(noFilts,lambdas[0],synthHistogram)+energy(noFilts,lambdas[1],synthHistogram1)+energy(noFilts,lambdas[2],synthHistogram2)+energy(noFilts,lambdas[3],synthHistogram3);
 
-        curEnergy = energy(noFilts,lambdas[0],synthHistogram1)+energy(noFilts,lambdas[1],synthHistogram2)+energy(noFilts,lambdas[2],synthHistogram3)+energy(noFilts,lambdas[3],synthHistogram4);
+        /*printf("%f  255 dif dirac: %d \n",lambdas[0][255], synthHistogram[255] - obsHistogram[255]);
+        printf("%f  255 dif gabor0: %d \n",lambdas[1][255], synthHistogram1[255] - obsHistogram1[255]);
+        printf("%f  255 dif gabor90: %d \n",lambdas[2][255], synthHistogram2[255] - obsHistogram2[255]);
+        printf("-----\n");
+        printf("%f  0 dif dirac: %d \n",lambdas[0][0], synthHistogram[0] - obsHistogram[0]);
+        printf("%f  0 dif gabor0: %d \n",lambdas[1][0], synthHistogram1[0] - obsHistogram1[0]);
+        printf("%f  0 dif gabor90: %d \n",lambdas[2][0], synthHistogram2[0] - obsHistogram2[0]);*/
+
         prob = exp(-1 * curEnergy);
 
         count = 0;
-        for (k=1;k<=100;k+=1){
+        for (k=1;k<=5;k+=1){
             count++;
             beta = 3 / log(k+1);
-            curEnergy = energy(noFilts,lambdas[0],synthHistogram1)+energy(noFilts,lambdas[1],synthHistogram2)+energy(noFilts,lambdas[2],synthHistogram3)+energy(noFilts,lambdas[3],synthHistogram4);
+            curEnergy = energy(noFilts,lambdas[0],synthHistogram)+energy(noFilts,lambdas[1],synthHistogram1)+energy(noFilts,lambdas[2],synthHistogram2)+energy(noFilts,lambdas[3],synthHistogram3);
             for (i=0;i<rows;i++){
-                if ((i+1)%rows == 0)
-                    printf("count: %d\n",count);
                 for (j=0;j<cols;j++){
-                        //metropolis start
-                        randomNumber = rand()% 256;
-                        randInt = randomNumber;
+                        randInt = rand()%256;
                         imgCopy1[i][j] = randInt;
+
+                        for(l=0;l<256;l++){
+                            CsynthHistogram[l] = synthHistogram[l];
+                            CsynthHistogram1[l] = synthHistogram1[l];
+                            CsynthHistogram2[l] = synthHistogram2[l];
+                            CsynthHistogram3[l] = synthHistogram3[l];
+                        }
+
+                        localHistogram(synthHistogram, synthImg, imgCopy1, filtSize, rows, cols, i, j);
 
                         localConvolve(rows,cols,filtRows,filtCols,synthImg,oldfilteredImg,filter1,i,j);
                         localConvolve(rows,cols,filtRows,filtCols,imgCopy1,filteredImg,filter1,i,j);
-                        localHistogram(synthHistogram1, oldfilteredImg, filteredImg, filtSize, rows, cols,i, j);
+                        localHistogram(synthHistogram1, oldfilteredImg, filteredImg, filtSize, rows, cols, i, j);
 
                         localConvolve(rows,cols,filtRows,filtCols,synthImg,oldfilteredImg,filter2,i,j);
                         localConvolve(rows,cols,filtRows,filtCols,imgCopy1,filteredImg,filter2,i,j);
@@ -252,43 +266,50 @@ int main(int argc, char* argv[])
                         localConvolve(rows,cols,filtRows,filtCols,imgCopy1,filteredImg,filter3,i,j);
                         localHistogram(synthHistogram3, oldfilteredImg, filteredImg, filtSize, rows, cols, i, j);
 
-                        localConvolve(rows,cols,filtRows,filtCols,synthImg,oldfilteredImg,filter4,i,j);
-                        localConvolve(rows,cols,filtRows,filtCols,imgCopy1,filteredImg,filter4,i,j);
-                        localHistogram(synthHistogram4, oldfilteredImg, filteredImg, filtSize, rows, cols, i, j);
-
-                        current = energy(noFilts,lambdas[0],synthHistogram1)+energy(noFilts,lambdas[1],synthHistogram2)+energy(noFilts,lambdas[2],synthHistogram3)+energy(noFilts,lambdas[3],synthHistogram4);
-                        //
-                        //printf("%f \n",curEnergy-current);   
-                        //                
+                        current = energy(noFilts,lambdas[0],synthHistogram)+energy(noFilts,lambdas[1],synthHistogram1)+energy(noFilts,lambdas[2],synthHistogram2)+energy(noFilts,lambdas[3],synthHistogram3);
+              
                         if (current < curEnergy){
                             curEnergy = current;
                             synthImg[i][j] = randInt;
                         }
                         else{
-                            randomNumber = rand()/RAND_MAX;
+                            randomNumber = rand();
+                            randomNumber = randomNumber/RAND_MAX;
                             prob = exp(-(1/beta) * (current - curEnergy));
                             if (randomNumber < prob){
                                 curEnergy = current;
                                 synthImg[i][j] = randInt;
                             }
                             else{
-                                continue;
+                                for(l=0;l<256;l++){
+                                    synthHistogram[l] = CsynthHistogram[l];
+                                    synthHistogram1[l] = CsynthHistogram1[l];
+                                    synthHistogram2[l] = CsynthHistogram2[l];
+                                    synthHistogram3[l] = CsynthHistogram3[l];
+                                }
+                                imgCopy1[i][j]=synthImg[i][j];                           
                             }
-                        }
-                        imgCopy1[i][j]=synthImg[i][j];
+                        }     
                 }
             }
         }
-        printf("Loop %d done\n",loopNo);
         diff = 0;
         
-        /*for (i=0;i<256;i++){
-            diff += abs(obsHistogram1[i] - synthHistogram1[i]) + abs(obsHistogram1[i] - synthHistogram1[i]);
+        if(loopNo%1==0){
+            for (i=0;i<256;i++){
+                diff += abs(obsHistogram[i] - synthHistogram[i]) + abs(obsHistogram1[i] - synthHistogram1[i]) + abs(obsHistogram2[i] - synthHistogram2[i])+ abs(obsHistogram3[i] - synthHistogram3[i]);
+            }
         }
-        diff = diff/2;
-        printf("diff: %d\n",diff);*/
-    } while (loopNo < 50);
-    //} while (diff > epsilon);*/
+
+        if(loopNo < 100 && loopNo > 50){
+            if(diff<min)
+                min = diff;
+        }
+
+        printf("\n diff = %d and min = %d\n",diff, min);
+        printf("------Loop %d -----\n",loopNo);
+
+    } while ((diff > min || loopNo<=100) && loopNo<120);
 
     for (i=0;i<rows;i++){
         for (j=0;j<cols;j++){
@@ -350,7 +371,7 @@ double energy(int noFilts, float *lambdas, int* histogram){
     int i;
     float ans=0;
         for (i=0;i<256;i++){
-            ans += lambdas[i] * histogram[i];
+            ans += lambdas[i]*histogram[i];
         }
     return ans;
 }
